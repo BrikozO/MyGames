@@ -27,10 +27,10 @@ class Ship:
         if self.is_out_pole():
             raise ValueError()
 
-    def get_start_coords(self):
+    def get_start_coords(self) -> tuple:
         return self._x, self._y
 
-    def calc_position(self):
+    def calc_position(self) -> tuple:
         if self._tp == 1:
             self.indx = [(i, j) for j in range(self._x, self._x + self._length) for i in
                          range(self._y, self._y + 1)]
@@ -41,7 +41,7 @@ class Ship:
             self._cells[self.indx[elem]] = 1
         return self.indx, self._cells
 
-    def is_collide(self, ship):
+    def is_collide(self, ship) -> bool:
         if ship._tp == 1:
             indx_ship = [(i, j) if (0 <= i <= ship._size - 1 and 0 <= j <= ship._size - 1) else None for j in
                          range(ship._x - 1, ship._x + ship._length + 1) for i in
@@ -104,7 +104,7 @@ class GamePole:
                         ship._cells = {}
                         continue
 
-    def get_ships(self):
+    def get_ships(self) -> list:
         return self._ships
 
     def show(self, is_user=False):
@@ -120,7 +120,7 @@ class GamePole:
             string = [symb if type(symb) != list else symb[1] for symb in string]
             print(*string)
 
-    def get_pole(self):
+    def get_pole(self) -> list:
         return self.pole
 
 
@@ -138,7 +138,7 @@ class GameLogic:
         self.user_dead = 0
         self.bot_dead = 0
 
-    def shoot_logic(self, field, crd1, crd2):
+    def shoot_logic(self, field: list, crd1: int, crd2: int) -> GamePole.show:
         ship = field.pole[crd1 - 1][crd2 - 1][0]
         if not isinstance(ship, Ship):
             field.pole[crd1 - 1][crd2 - 1] = emojis.encode(":fire:")
