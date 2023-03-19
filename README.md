@@ -2,7 +2,7 @@
 
 My OOP-based python games nowadays includes:  
 :ship: Sea battle console game   
-:triangular_flag_on_post: Sapper console game  (Don't realised the flags)
+:triangular_flag_on_post: Sapper console game (Don't realised the flags)  
 :x: :o: TicTacToe  
 
 WIP:  
