@@ -3,6 +3,9 @@ import emojis
 
 
 class Cell:
+    """
+    Представление клетки
+    """
 
     def __init__(self):
         self.__is_mine = False
@@ -45,11 +48,12 @@ class Cell:
 
     @property
     def symbol(self):
-        return emojis.encode(self.__symbol)
+        return self.__symbol
 
     @symbol.setter
     def symbol(self, symb):
-        accepted_symbs = [":one:",
+        accepted_symbs = [":zero:",
+                          ":one:",
                           ":two:",
                           ":three:",
                           ":four:",
@@ -59,23 +63,27 @@ class Cell:
                           ":eight:",
                           ":nine:",
                           ":boom:",
+                          ":triangular_flag_on_post:"
                           ]
         if not (symb in accepted_symbs):
             raise ValueError("Недопустимый символ!")
-        self.__symbol = symb
+        self.__symbol = emojis.encode(symb)
 
     def __bool__(self):
-        return False if self.is_open else True
+        return True if self.is_open else False
 
 
 class GamePole:
+    """
+    Представление игрового поля
+    """
 
-    def __init__(self, n, m, total_mines):
-        self.N = n
-        self.M = m
-        self.total_mines = total_mines
-        self.__pole_cells = [[Cell() for _ in range(m)] for _ in range(n)]
-        self.__cell_values = [":one:",
+    def __init__(self, columns_rows: int, mines_percent: int) -> None:
+        self.columns_rows = columns_rows
+        self.mines_percent = mines_percent
+        self.__pole_cells = [[Cell() for _ in range(self.columns_rows)] for _ in range(self.columns_rows)]
+        self.__cell_values = [":zero:",
+                              ":one:",
                               ":two:",
                               ":three:",
                               ":four:",
@@ -95,68 +103,122 @@ class GamePole:
         return self.__cell_values
 
     def __setattr__(self, key, value):
-        if key in ("N", "M") and value == 0:
-            raise ValueError("Недопустимый размер поля!")
+        if key in ("columns_rows", "mines_percent") and not isinstance(value, int):
+            raise ValueError(f"Недопустимое значение {key} - {type(value)}")
+        if key in ("columns_rows", "mines_percent") and value == 0:
+            raise ValueError(f"Недопустимое количество {key}")
+        if key == "mines_percent" and value > 50:
+            raise ValueError(f"Слишком большой процент мин! ({value})")
         super.__setattr__(self, key, value)
 
 
 class GamePoleLogic:
+    """
+    Представление логики игрового поля
+    """
 
+    # Инициализация игрового поля
     @staticmethod
-    def init_pole(pole_obi):
-        k = pole_obi.total_mines
+    def init_pole(pole_obj: GamePole):
+        k = int((pole_obj.columns_rows ** 2 / 100) * pole_obj.mines_percent)
+        print(k)
         k0 = 0
         while k0 < k:
-            mine_coord = [random.randint(0, (pole_obi.N - 1)) for _ in range(2)]
-            if not pole_obi.pole[mine_coord[0]][mine_coord[1]].is_mine:
-                pole_obi.pole[mine_coord[0]][mine_coord[1]].is_mine = True
+            mine_coord = [random.randint(0, (pole_obj.columns_rows - 1)) for _ in range(2)]
+            if not pole_obj.pole[mine_coord[0]][mine_coord[1]].is_mine:
+                pole_obj.pole[mine_coord[0]][mine_coord[1]].is_mine = True
                 k0 += 1
             else:
                 continue
 
         indx = (-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)
-        for i in range(0, pole_obi.N):
-            for j in range(0, pole_obi.M):
-                if not pole_obi.pole[i][j].is_mine:
-                    pole_obi.pole[i][j].number = sum(pole_obi.pole[i + i1][j + j1].is_mine for i1, j1 in indx if
-                                                     0 <= i + i1 < pole_obi.N and 0 <= j + j1 <
-                                                     pole_obi.M)
-                    pole_obi.pole[i][j].symbol = pole_obi.values[pole_obi.pole[i][j].number - 1]
+        for i in range(0, pole_obj.columns_rows):
+            for j in range(0, pole_obj.columns_rows):
+                if not pole_obj.pole[i][j].is_mine:
+                    pole_obj.pole[i][j].number = sum(pole_obj.pole[i + i1][j + j1].is_mine for i1, j1 in indx
+                                                     if 0 <= i + i1 < pole_obj.columns_rows
+                                                     and 0 <= j + j1 < pole_obj.columns_rows)
+                    pole_obj.pole[i][j].symbol = pole_obj.values[pole_obj.pole[i][j].number]
 
+    # Проверка координат клетки
     @staticmethod
-    def open_cell(pole_obi, coords):
+    def check_coords(columns_rows: int, coords: list) -> list:
         i, j = coords
-        try:
-            pole_obi.pole[i - 1][j - 1]
-        except IndexError as idx_err:
-            print(idx_err)
-            raise IndexError('некорректные индексы i, j клетки игрового поля')
-        finally:
-            if pole_obi.pole[i - 1][j - 1].is_mine:
-                pole_obi.pole[i - 1][j - 1].is_open = True
-                pole_obi.pole[i - 1][j - 1].symbol = ":boom:"
-                GamePoleLogic.show_pole(pole_obi)
-                print("Игра окончена!")
-                game_over = True
-                return game_over
-            elif pole_obi.pole[i - 1][j - 1].is_open:
-                print("Данная клетка уже открыта")
-            else:
-                pole_obi.pole[i - 1][j - 1].is_open = True
-                GamePoleLogic.show_pole(pole_obi)
+        if not (0 < i <= columns_rows + 1 and 0 < j <= columns_rows):
+            raise IndexError('Некорректные индексы i, j клетки игрового поля')
+        return [i, j]
 
+    # Открытие клетки на поле
     @staticmethod
-    def show_pole(pole_obi):
-        for i in range(len(pole_obi.pole)):
-            for j in range(len(pole_obi.pole[i])):
-                print(pole_obi.pole[i][j].symbol if pole_obi.pole[i][j].is_open else
+    def open_cell(pole_obj: GamePole, coords: list) -> (bool, None):
+        i, j = GamePoleLogic.check_coords(pole_obj.columns_rows, coords)
+        if pole_obj.pole[i - 1][j - 1].symbol == ":triangular_flag_on_post:":
+            raise KeyError('В данную клетку установлен флаг!')
+        elif pole_obj.pole[i - 1][j - 1].is_mine:
+            pole_obj.pole[i - 1][j - 1].is_open = True
+            pole_obj.pole[i - 1][j - 1].symbol = ":boom:"
+            GamePoleLogic.show_pole(pole_obj)
+            print('Игра окончена!')
+            end = True
+            return end
+        elif pole_obj.pole[i - 1][j - 1].is_open:
+            raise KeyError('Данная клетка уже открыта')
+        else:
+            pole_obj.pole[i - 1][j - 1].is_open = True
+            GamePoleLogic.show_pole(pole_obj)
+
+    # Установка флага в клетку с преподолагаемой миной
+    @staticmethod
+    def set_mine_flag(pole_obj: GamePole, coords: list):
+        i, j = GamePoleLogic.check_coords(pole_obj.columns_rows, coords)
+        if pole_obj.pole[i - 1][j - 1].is_open:
+            print('Вы не можете установить флаг в открытую клетку')
+        else:
+            pole_obj.pole[i - 1][j - 1].is_open = True
+            pole_obj.pole[i - 1][j - 1].symbol = ":triangular_flag_on_post:"
+            GamePoleLogic.show_pole(pole_obj)
+
+    # Отображение всего поля
+    @staticmethod
+    def show_pole(pole_obj: GamePole):
+        for i in range(len(pole_obj.pole)):
+            for j in range(len(pole_obj.pole[i])):
+                print(pole_obj.pole[i][j].symbol if bool(pole_obj.pole[i][j]) else
                       emojis.encode(":white_medium_square:"), end=" ")
             print(end="\n")
 
 
 if __name__ == "__main__":
-    pole = GamePole(10, 10, 50)
+
+    def command_handler(command: str, pole: GamePole) -> (bool, None):
+        try:
+            coords = list(map(int, input("Введите координаты клетки: ").split()))
+        except ValueError:
+            print("Некорректные входные данные - координаты клетки должны быть числами!")
+        else:
+            if command == "Открыть клетку":
+                ending = GamePoleLogic.open_cell(pole, coords)
+                return ending
+            else:
+                GamePoleLogic.set_mine_flag(pole, coords)
+
+
+    pole = GamePole(10, 30)
     GamePoleLogic.show_pole(pole)
     game_over = False
     while not game_over:
-        game_over = GamePoleLogic.open_cell(pole, list(map(int, input("Введите координаты клетки: ").split())))
+        cmd = input("Что вы хотите сделать? (Открыть клетку/Установить флаг): ")
+        if cmd == "Открыть клетку":
+            try:
+                game_over = command_handler(cmd, pole)
+            except Exception as exc:
+                print(exc)
+                game_over = command_handler(cmd, pole)
+        elif cmd == "Установить флаг":
+            try:
+                command_handler(cmd, pole)
+            except Exception as exc:
+                print(exc)
+                command_handler(cmd, pole)
+        else:
+            raise TypeError("Неизвестная команда!")
